@@ -4,6 +4,9 @@ This repository contains code for training and evaluating machine learning model
 
 ## Repository Structure
 
+### Environment and Dependencies
+The `environment.yml` file contains all dependencies needed to run the code.
+
 ### Figure Creation Notebooks
 
 The data and code to create all figures in the paper "Accurate prediction of gene deletion phenotypes with Flux Cone Learning" is organized by figure panel. Some figures require multiple data files; Figures 2A and B are created from the same dataset. 
