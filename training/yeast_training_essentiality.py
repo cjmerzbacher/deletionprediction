@@ -1,3 +1,8 @@
+"""
+Train and evaluate RandomForest models for yeast essentiality classification.
+Uses k-fold cross validation and hyperparameter optimization.
+"""
+
 import sys
 import warnings
 import pickle
@@ -10,8 +15,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, accuracy_score
-from hyperopt import fmin, tpe, hp, Trials, STATUS_OK
-from hyperopt.pyll.base import scope
 
 # Add tools path to system path
 tools_path = './tools'
@@ -24,7 +27,7 @@ LOCAL_DATA_FOLDER = './data/'
 RANDOM_SEED = 42
 
 def parse_arguments() -> argparse.Namespace:
-    """Parse command line arguments."""
+    """Parse command line arguments for model configuration."""
     parser = argparse.ArgumentParser(
         prog='Trainer',
         description='Trains a RandomForest model on yeast essentiality data'
@@ -40,36 +43,41 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 def load_data() -> Tuple[np.ndarray, List[str], List[str]]:
-    """Load and prepare yeast knockout data and split into train/test sets."""
-    print('Loading in Data...')
+    """
+    Load and prepare yeast knockout data and split into train/test sets.
+    
+    Returns:
+        data: Raw knockout data
+        train_names: Essential and nonessential gene names for training
+        test_names: Essential and nonessential gene names for testing
+    """
+    # Load raw data
     data = np.load(LOCAL_DATA_FOLDER + 'yeast_single_knockouts.npz')
-    dataframe = pd.DataFrame({'knockout': data['z'], 'essential': data['y']})
+    df = pd.DataFrame({'knockout': data['z'], 'essential': data['y']})
     
-    # Get essential and nonessential gene lists
-    nonessential_names = list(set(dataframe.loc[dataframe.essential == 1]['knockout']))
-    essential_names = list(set(dataframe.loc[dataframe.essential == 0]['knockout']))
+    # Get essential and nonessential genes
+    nonessential = list(set(df.loc[df.essential == 1]['knockout']))
+    essential = list(set(df.loc[df.essential == 0]['knockout']))
     
-    # Load predefined test set
-    print('Loading in predefined test set...')
+    # Load and apply predefined test split
     test_set = pd.read_csv(LOCAL_DATA_FOLDER + 'yeast_essentiality_test_split.csv')
     test_knockouts = test_set.loc[test_set.test == 1].knockout.unique()
     
-    # Split into train/test sets
-    essential_names_test = [e for e in essential_names if e in test_knockouts]
-    nonessential_names_test = [e for e in nonessential_names if e in test_knockouts]
-    essential_names = [e for e in essential_names if e not in test_knockouts]
-    nonessential_names = [e for e in nonessential_names if e not in test_knockouts]
+    # Split genes into train/test
+    test_names = (
+        [e for e in essential if e in test_knockouts],
+        [e for e in nonessential if e in test_knockouts]
+    )
+    train_names = (
+        [e for e in essential if e not in test_knockouts],
+        [e for e in nonessential if e not in test_knockouts]
+    )
     
-    return data, (essential_names, nonessential_names), (essential_names_test, nonessential_names_test)
+    return data, train_names, test_names
 
-def train_and_evaluate_model(X_train: np.ndarray, X_test: np.ndarray, 
-                           y_train: np.ndarray, y_test: np.ndarray,
-                           knockout_names: np.ndarray, model_savepath: str,
-                           params: Dict, i: int = 0, fold: int = 0,
-                           acc_type: str = 'knockout') -> Tuple[pd.DataFrame, float, pd.DataFrame]:
-    """Train and evaluate a RandomForest model."""
-    model_name = 'RandomForest'
-    pipeline = Pipeline([
+def create_pipeline(params: Dict) -> Pipeline:
+    """Create sklearn pipeline with RandomForest classifier."""
+    return Pipeline([
         ('scaler', StandardScaler()),
         ('classifier', RandomForestClassifier(
             max_depth=params['max_depth'],
@@ -77,92 +85,47 @@ def train_and_evaluate_model(X_train: np.ndarray, X_test: np.ndarray,
             min_samples_split=params['min_samples_split'],
             random_state=RANDOM_SEED))
     ])
+
+def train_and_evaluate(X_train: np.ndarray, X_test: np.ndarray,
+                      y_train: np.ndarray, y_test: np.ndarray,
+                      knockout_names: np.ndarray, params: Dict,
+                      model_path: str, fold: int = 0) -> Tuple[pd.DataFrame, float]:
+    """
+    Train model and evaluate performance.
     
-    # Train and save model
+    Returns:
+        results_df: DataFrame with predictions and metrics
+        accuracy: Knockout-level accuracy score
+    """
+    # Train model
+    pipeline = create_pipeline(params)
     pipeline.fit(X_train, y_train)
-    model_filename = f'max_depth_{params["max_depth"]}_n_estimators_{params["n_estimators"]}_min_samples_split_{params["min_samples_split"]}_{fold}_{i}_{test_split}_{model_name}.pkl'
-    with open(LOCAL_DATA_FOLDER + model_savepath + model_filename, 'wb') as f:
+    
+    # Save trained model
+    model_name = f'rf_d{params["max_depth"]}_t{params["n_estimators"]}_s{params["min_samples_split"]}_{fold}.pkl'
+    with open(f'{model_path}{model_name}', 'wb') as f:
         pickle.dump(pipeline, f)
 
     # Generate predictions
     y_pred = pipeline.predict(X_test)
-    y_pred_proba = pipeline.predict_proba(X_test)
+    y_proba = pipeline.predict_proba(X_test)
     
-    # Calculate metrics
-    report = classification_report(y_test, y_pred, output_dict=True)
-    accuracy = accuracy_score(y_test, y_pred)
-    
-    # Prepare results DataFrame
+    # Create results DataFrame
     results_df = pd.DataFrame({
         'true_label': y_test,
         'prediction': y_pred,
-        'score': y_pred_proba[:, 1],
-        'model': model_name,
-        'knockout_name': knockout_names
+        'score': y_proba[:, 1],
+        'model': 'RandomForest',
+        'knockout_name': knockout_names,
+        'fold': fold
     })
     
-    # Calculate knockout-level accuracy if requested
-    if acc_type == 'knockout':
-        accuracy = ko.calculate_knockout_accuracy(results_df, thresh=0.5, score='score', column='knockout_name')
+    # Calculate knockout-level accuracy
+    accuracy = ko.calculate_knockout_accuracy(
+        results_df, thresh=0.5, score='score', column='knockout_name'
+    )
     
-    print(f'Sample-level Accuracy: {accuracy_score(y_test, y_pred)}')
-    print(f'Knockout-level Accuracy: {accuracy}')
-    
-    return pd.DataFrame(report).transpose(), accuracy, results_df
-
-def objective(params: Dict, data: np.ndarray, folds: int) -> Dict:
-    """Objective function for hyperparameter optimization."""
-    pipeline = Pipeline([
-        ('scaler', StandardScaler()),
-        ('classifier', RandomForestClassifier(
-            max_depth=params['max_depth'], 
-            n_estimators=params['n_estimators'], 
-            min_samples_split=params['min_samples_split'], 
-            random_state=42))
-    ])
-
-    accuracy_scores = []
-    all_results = pd.DataFrame()
-
-    # Cross validation (manual to compute knockout-level)
-    for fold in range(folds):
-        print(f'beginning fold {fold}')
-        print('Splitting training and test set...')
-        essential_names_split, nonessential_names_split = split_lists_randomly(essential_names, nonessential_names, test_split)
-        essential_names_val, essential_names_train = essential_names_split
-        nonessential_names_val, nonessential_names_train = nonessential_names_split
-
-        essential_data_train = data['x'][np.isin(data['z'], essential_names_train)]
-        essential_data_val = data['x'][np.isin(data['z'], essential_names_val)]
-
-        nonessential_data_train = data['x'][np.isin(data['z'], nonessential_names_train)]
-        nonessential_data_val = data['x'][np.isin(data['z'], nonessential_names_val)]
-
-        X_train = np.concatenate((essential_data_train, nonessential_data_train))
-        y_train = np.concatenate((data['y'][np.isin(data['z'], essential_names_train)], data['y'][np.isin(data['z'], nonessential_names_train)]))
-        X_val = np.concatenate((essential_data_val, nonessential_data_val))
-        y_val = np.concatenate((data['y'][np.isin(data['z'], essential_names_val)], data['y'][np.isin(data['z'], nonessential_names_val)]))
-        
-        # Get knockout information for validation set
-        knockout_essential = data['z'][np.isin(data['z'], essential_names_val)]
-        knockout_nonessential = data['z'][np.isin(data['z'], nonessential_names_val)]
-        knockout_val = np.concatenate((knockout_essential, knockout_nonessential))
-
-        # Shuffle training data
-        indices = np.random.permutation(len(X_train))
-        X_train_shuffled = X_train[indices]
-        y_train_shuffled = y_train[indices]
-
-        report_df, accuracy, results_df = train_and_evaluate_model(X_train_shuffled, X_val, y_train_shuffled, y_val, knockout_val, savepath, params, i=0, fold=fold)
-        results_df['fold'] = fold
-        accuracy_scores.append(accuracy)
-        all_results = pd.concat([all_results, results_df])
-        
-        # Save all results
-        all_results.to_csv(LOCAL_DATA_FOLDER + savepath +  f'max_depth_{params['max_depth']}_n_estimators_{params['n_estimators']}_min_samples_split_{params['min_samples_split']}_{test_split}_all_results.csv', index=False)
-
-    # Return the negative mean accuracy (since Hyperopt minimizes the objective)
-    return {'loss': -np.mean(accuracy_scores), 'status': STATUS_OK}
+    return results_df, accuracy
 
 def main():
     """Main execution function."""
@@ -170,69 +133,57 @@ def main():
     np.random.seed(RANDOM_SEED)
     warnings.filterwarnings('ignore')
     
-    # Load and prepare data
-    data, (essential_names, nonessential_names), (essential_names_test, nonessential_names_test) = load_data()
+    # Load data
+    data, train_names, test_names = load_data()
     
-    # Perform grid search if requested
-    count = 0
-    results = {}
-    if args.grid_search:
-        for max_depth in [None, 30]:
-            for n_estimators in [100, 200, 300]:
-                for min_samples_split in [2, 20]:
-                    count +=1
-                    print(f'({count}/12) Performing k-fold CV on parameters:', max_depth, n_estimators, min_samples_split)
-                    params = {'max_depth': max_depth, 'n_estimators': n_estimators, 'min_samples_split': min_samples_split}
-                    # result = objective(params, data, folds)
-                    # print('Result:', result)
-
+    # Set model parameters
+    params = {
+        'max_depth': args.max_depth or None,
+        'n_estimators': args.n_estimators,
+        'min_samples_split': args.min_samples_split
+    }
     
-
-    # Set dummy parameters if not specified
-    if args.max_depth is None or args.n_estimators == 'None' or args.min_samples_split == 'None':
-        best = {'max_depth': None, 'n_estimators': 100, 'min_samples_split': 2}
-    else:
-        best = {'max_depth': args.max_depth, 'n_estimators': args.n_estimators, 'min_samples_split': args.min_samples_split}
-
-    # Train final model with specified parameters
+    # Train and evaluate models
     for i in range(args.repeats):
-        print(f'Iteration {i}')
-        essential_data_train = data['x'][np.isin(data['z'], essential_names)]
-        essential_data_test = data['x'][np.isin(data['z'], essential_names_test)]
-        nonessential_data_train = data['x'][np.isin(data['z'], nonessential_names)]
-        nonessential_data_test = data['x'][np.isin(data['z'], nonessential_names_test)]
-
-        X_train = np.concatenate((essential_data_train, nonessential_data_train))
-        y_train = np.concatenate((data['y'][np.isin(data['z'], essential_names)], data['y'][np.isin(data['z'], nonessential_names)]))
-        X_test = np.concatenate((essential_data_test, nonessential_data_test))
-        y_test = np.concatenate((data['y'][np.isin(data['z'], essential_names_test)], data['y'][np.isin(data['z'], nonessential_names_test)]))
+        print(f'Training iteration {i+1}/{args.repeats}')
         
-        # Get knockout information for test set ONLY
-        knockout_essential = data['z'][np.isin(data['z'], essential_names_test)]
-        knockout_nonessential = data['z'][np.isin(data['z'], nonessential_names_test)]
-        knockout_test = np.concatenate((knockout_essential, knockout_nonessential))
-
-        results = []
-        accuracy_scores = []
-        all_results = pd.DataFrame()
-
-        # Shuffle training data
-        indices = np.random.permutation(len(X_train))
-        X_train_shuffled = X_train[indices]
-        y_train_shuffled = y_train[indices]
-
-        report_df, accuracy, results_df = train_and_evaluate_model(X_train_shuffled, X_test, y_train_shuffled, y_test, knockout_test, savepath, best, i=i, fold=0)
-        print('accuracy', accuracy)
-        results.append(report_df)
-        accuracy_scores.append(accuracy)
-        all_results = pd.concat([all_results, results_df])
-
-        # Save all results
-        if folds == 0:
-            all_results.to_csv(local_data_folder + savepath +  f'{i}_{test_split}_all_results.csv', index=False)
-        else:
-            all_results.to_csv(local_data_folder + savepath +  f'{i}_{test_split}_best_results.csv', index=False)
-
+        # Prepare train/test data
+        X_train = np.concatenate([
+            data['x'][np.isin(data['z'], names)] 
+            for names in train_names
+        ])
+        y_train = np.concatenate([
+            data['y'][np.isin(data['z'], names)]
+            for names in train_names
+        ])
+        
+        X_test = np.concatenate([
+            data['x'][np.isin(data['z'], names)]
+            for names in test_names
+        ])
+        y_test = np.concatenate([
+            data['y'][np.isin(data['z'], names)]
+            for names in test_names
+        ])
+        
+        # Get test set knockout names
+        knockout_test = np.concatenate([
+            data['z'][np.isin(data['z'], names)]
+            for names in test_names
+        ])
+        
+        # Train and evaluate
+        results_df, accuracy = train_and_evaluate(
+            X_train, X_test, y_train, y_test,
+            knockout_test, params, LOCAL_DATA_FOLDER + args.savepath
+        )
+        
+        # Save results
+        results_df.to_csv(
+            f'{LOCAL_DATA_FOLDER}{args.savepath}results_{i}.csv',
+            index=False
+        )
+        print(f'Iteration {i+1} accuracy: {accuracy:.3f}')
 
 if __name__ == '__main__':
     main()
