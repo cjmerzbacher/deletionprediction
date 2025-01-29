@@ -23,7 +23,7 @@ from splitting_lists import split_lists_randomly
 import knockout_voting as ko
 
 # Constants
-LOCAL_DATA_FOLDER = './data/'
+LOCAL_DATA_FOLDER = '../data/'
 RANDOM_SEED = 42
 
 def parse_arguments() -> argparse.Namespace:

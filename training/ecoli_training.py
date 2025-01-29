@@ -17,7 +17,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 # Constants
-LOCAL_DATA_FOLDER = './data/'
+LOCAL_DATA_FOLDER = '../data/'
 
 # Model-specific biomass column indices to remove from features
 BIOMASS_INDICES = {

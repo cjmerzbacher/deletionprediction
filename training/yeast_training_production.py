@@ -21,7 +21,7 @@ from imblearn.under_sampling import RandomUnderSampler
 tools_path = './tools'
 sys.path.append(tools_path)
 import knockout_voting as ko
-LOCAL_DATA_FOLDER = './data/'
+LOCAL_DATA_FOLDER = '../data/'
 RANDOM_SEED = 42
 
 def parse_arguments() -> argparse.Namespace:
@@ -37,7 +37,6 @@ def load_and_preprocess_data():
     """Load knockout data, remove NaNs, scale and bin production values."""
     print('Loading data...')
     raw_data = np.load(LOCAL_DATA_FOLDER + 'yeast_single_knockouts.npz')
-    
     # Remove NaN values
     nan_mask = ~np.isnan(raw_data['prod'])
     data = {

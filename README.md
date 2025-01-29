@@ -4,6 +4,10 @@ This repository contains code for training and evaluating machine learning model
 
 ## Repository Structure
 
+### Figure Creation Notebooks
+
+The data and code to create all figures in the paper "Accurate prediction of gene deletion phenotypes with Flux Cone Learning" is organized by figure panel. Some figures require multiple data files; Figures 2A and B are created from the same dataset. 
+
 ### Training Scripts
 
 - `training/ecoli_training.py`: Trains RandomForest models for E. coli essentiality classification using train/test splits

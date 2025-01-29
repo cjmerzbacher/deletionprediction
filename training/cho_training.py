@@ -20,7 +20,7 @@ from xgboost import XGBClassifier
 import argparse
 
 # Constants
-LOCAL_DATA_FOLDER = './data'
+LOCAL_DATA_FOLDER = '../data'
 RANDOM_SEED = 42
 
 def parse_arguments() -> argparse.Namespace:
