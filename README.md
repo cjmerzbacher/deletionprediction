@@ -5,7 +5,8 @@ This repository contains code for training and evaluating machine learning model
 ## Repository Structure
 
 ### Environment and Dependencies
-The `environment.yml` file contains all dependencies needed to run the code.
+The `environment.yml` file contains all dependencies needed to run the code. It can be installed in a fresh Conda environment using the following command: `conda env create -f environment.yml`.
+
 
 ### Figure Creation Notebooks
 
