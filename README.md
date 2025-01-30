@@ -7,14 +7,13 @@ This repository contains code for training and evaluating machine learning model
 ### Environment and Dependencies
 The `environment.yml` file contains all dependencies needed to run the code. It can be installed in a fresh Conda environment using the following command: `conda env create -f environment.yml`.
 
-
 ### Figure Creation Notebooks
 
 The data and code to create all figures in the paper "Accurate prediction of gene deletion phenotypes with Flux Cone Learning" is organized by figure panel. Some figures require multiple data files; Figures 2A and B are created from the same dataset. 
 
 ### Training Scripts
 
-- `training/ecoli_training.py`: Trains RandomForest models for E. coli essentiality classification using train/test splits
+- `training/ecoli_training.py`: Trains RandomForest models for E. coli essentiality classification using train/test splits. Note that this script trains models on all reactions in a given GEM, not only the shared reactions as in Figure 1F.
 - `training/yeast_training_esseniality.py`: Trains RandomForest models for yeast essentiality classification using k-fold cross validation and hyperparameter optimization
 - `training/yeast_training_production.py`: Trains multiple ML models (HistGradientBoosting, LinearSVC, LogisticRegression, RandomForest) for yeast production classification with balanced and resampled variants
 - `training/cho_training.py`: Trains HistGradientBoosting models for CHO cell essentiality classification using k-fold cross validation and hyperparameter optimization
