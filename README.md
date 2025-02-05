@@ -39,30 +39,33 @@ The `data/` directory also contains several CSV files used for data splits and a
 
 The training scripts accept various command line arguments to configure:
 
-- Number of training repeats/folds
+- Number of training repeats (number of times model is trained)
+- Number of training folds (number of k-fold splits of training set)
 - Test set split percentage 
 - Model hyperparameters (learning rate, tree depth, etc.)
 - Paths for saving models and results
 
 ## Usage
 
-Example usage for training an E. coli model:
+### Example usage for training an E. coli model:
 
-### Basic usage with default parameters
-python ecoli_training.py --model 'iml1515' --savepath 'results/' --repeats 5 --test_split 0.2
+#### Basic usage with default parameters
+`python ecoli_training.py --model 'iml1515' --savepath 'results/' --repeats 5 --test_split 0.2`
 
-### The script will:
+#### The script will:
 1. Load E. coli knockout data for iml1515 model
 2. Split data into train/test sets (20% test)
 3. Train a RandomForest model 5 times with different random splits
 4. Save models and results to models/ directory
 
-Example usage for training a yeast essentiality model:
+### Example usage for training a yeast essentiality model:
 
-### Basic usage with default parameters:
-python yeast_training_essentiality.py --savepath 'results/'
+#### Basic usage with default parameters:
+`python yeast_training_essentiality.py --savepath 'results/'`
 
-### Full parameter specification:
+#### Full parameter specification:
+
+```shell
 python yeast_training_essentiality.py \
     --savepath 'results/' \
     --repeats 5 \
@@ -71,6 +74,7 @@ python yeast_training_essentiality.py \
     --max_depth 10 \
     --n_estimators 200 \
     --min_samples_split 5
+```
 
 The script will:
 1. Load yeast knockout data
@@ -79,37 +83,44 @@ The script will:
 4. Evaluate using k-fold cross validation
 5. Save models and results to specified path
 
-### For hyperparameter tuning:
+#### For hyperparameter tuning:
+
+```shell
 python yeast_training_essentiality.py \
     --savepath 'tuning/' \
     --grid_search True \
     --repeats 3
+```
 
-Example usage for training a yeast production model suite:
+### Example usage for training a yeast production model suite:
 
-### Basic usage with default parameters:
-python yeast_training_production.py --savepath 'results/'
+#### Basic usage with default parameters:
+`python yeast_training_production.py --savepath 'results/'`
 
-### Full parameter specification:
+#### Full parameter specification:
+
+```shell
 python yeast_training_production.py \
     --savepath 'results/' \
     --repeats 5 \
     --folds 5 \
     --test_split 0.2
+```
 
-### The script will:
+#### The script will:
 1. Load yeast knockout data and production values
 2. Preprocess data by removing NaNs and scaling production values
 3. Bin production into 3 classes (low/medium/high)
 4. Train multiple ML models with k-fold cross validation
 5. Save models and results to specified path
 
-Example usage for training a CHO model:
+### Example usage for training a CHO model:
 
-### Basic usage with default parameters
-python cho_training.py --savepath 'results/' --max_iter 100 --learning_rate 0.1
+#### Basic usage with default parameters
+`python cho_training.py --savepath 'results/' --max_iter 100 --learning_rate 0.1`
 
-### Full parameter specification
+#### Full parameter specification
+```shell
 python cho_training.py \
     --savepath 'results/' \
     --repeats 5 \
@@ -119,14 +130,17 @@ python cho_training.py \
     --max_depth 10 \
     --max_iter 100 \
     --learning_rate 0.1
+```
 
-### For hyperparameter tuning
+#### For hyperparameter tuning
+
+```shell
 python cho_training.py \
     --savepath tuning/ \
     --max_depth 5 \
     --max_iter 50 \
     --learning_rate 0.05
-
+```
 The script will:
 1. Load CHO cell knockout data
 2. Split data into train/test sets

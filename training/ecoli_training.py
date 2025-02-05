@@ -33,10 +33,10 @@ def parse_arguments() -> argparse.Namespace:
         prog='Trainer',
         description='Trains RandomForest models for E. coli essentiality prediction'
     )
-    parser.add_argument('--repeats', type=int, help='Number of training repeats')
-    parser.add_argument('--test_split', type=float, help='Test set fraction (e.g. 0.2 for 20% test)')
-    parser.add_argument('--savepath', help='Path to save model and results')
-    parser.add_argument('--model', help='E. coli model name')
+    parser.add_argument('--repeats', type=int, default=1, help='Number of training repeats')
+    parser.add_argument('--test_split', type=float, default=0.2, help='Test set fraction (e.g. 0.2 for 20%% test)')
+    parser.add_argument('--savepath', required=True, help='Path to save model and results')
+    parser.add_argument('--model', required=True, help='E. coli model name')
     return parser.parse_args()
 
 def load_data(model: str) -> Tuple[np.ndarray, np.ndarray, List[str], List[str]]:

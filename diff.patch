@@ -1,0 +1,147 @@
+diff --git a/README.md b/README.md
+index c001c78..34a9560 100644
+--- a/README.md
++++ b/README.md
+@@ -46,23 +46,25 @@ The training scripts accept various command line arguments to configure:
+ 
+ ## Usage
+ 
+-Example usage for training an E. coli model:
++### Example usage for training an E. coli model:
+ 
+-### Basic usage with default parameters
+-python ecoli_training.py --model 'iml1515' --savepath 'results/' --repeats 5 --test_split 0.2
++#### Basic usage with default parameters
++`python ecoli_training.py --model 'iml1515' --savepath 'results/' --repeats 5 --test_split 0.2`
+ 
+-### The script will:
++#### The script will:
+ 1. Load E. coli knockout data for iml1515 model
+ 2. Split data into train/test sets (20% test)
+ 3. Train a RandomForest model 5 times with different random splits
+ 4. Save models and results to models/ directory
+ 
+-Example usage for training a yeast essentiality model:
++### Example usage for training a yeast essentiality model:
+ 
+-### Basic usage with default parameters:
+-python yeast_training_essentiality.py --savepath 'results/'
++#### Basic usage with default parameters:
++`python yeast_training_essentiality.py --savepath 'results/'`
+ 
+-### Full parameter specification:
++#### Full parameter specification:
++
++```shell
+ python yeast_training_essentiality.py \
+     --savepath 'results/' \
+     --repeats 5 \
+@@ -71,6 +73,7 @@ python yeast_training_essentiality.py \
+     --max_depth 10 \
+     --n_estimators 200 \
+     --min_samples_split 5
++```
+ 
+ The script will:
+ 1. Load yeast knockout data
+@@ -79,37 +82,44 @@ The script will:
+ 4. Evaluate using k-fold cross validation
+ 5. Save models and results to specified path
+ 
+-### For hyperparameter tuning:
++#### For hyperparameter tuning:
++
++```shell
+ python yeast_training_essentiality.py \
+     --savepath 'tuning/' \
+     --grid_search True \
+     --repeats 3
++```
++
++### Example usage for training a yeast production model suite:
+ 
+-Example usage for training a yeast production model suite:
++#### Basic usage with default parameters:
++`python yeast_training_production.py --savepath 'results/'`
+ 
+-### Basic usage with default parameters:
+-python yeast_training_production.py --savepath 'results/'
++#### Full parameter specification:
+ 
+-### Full parameter specification:
++```shell
+ python yeast_training_production.py \
+     --savepath 'results/' \
+     --repeats 5 \
+     --folds 5 \
+     --test_split 0.2
++```
+ 
+-### The script will:
++#### The script will:
+ 1. Load yeast knockout data and production values
+ 2. Preprocess data by removing NaNs and scaling production values
+ 3. Bin production into 3 classes (low/medium/high)
+ 4. Train multiple ML models with k-fold cross validation
+ 5. Save models and results to specified path
+ 
+-Example usage for training a CHO model:
++### Example usage for training a CHO model:
+ 
+-### Basic usage with default parameters
+-python cho_training.py --savepath 'results/' --max_iter 100 --learning_rate 0.1
++#### Basic usage with default parameters
++`python cho_training.py --savepath 'results/' --max_iter 100 --learning_rate 0.1`
+ 
+-### Full parameter specification
++#### Full parameter specification
++```shell
+ python cho_training.py \
+     --savepath 'results/' \
+     --repeats 5 \
+@@ -119,14 +129,17 @@ python cho_training.py \
+     --max_depth 10 \
+     --max_iter 100 \
+     --learning_rate 0.1
++```
+ 
+-### For hyperparameter tuning
++#### For hyperparameter tuning
++
++```shell
+ python cho_training.py \
+     --savepath tuning/ \
+     --max_depth 5 \
+     --max_iter 50 \
+     --learning_rate 0.05
+-
++```
+ The script will:
+ 1. Load CHO cell knockout data
+ 2. Split data into train/test sets
+diff --git a/environment.yml b/environment.yml
+index 35c8754..5421f23 100644
+--- a/environment.yml
++++ b/environment.yml
+@@ -274,7 +274,7 @@ dependencies:
+       - pynndescent==0.5.12
+       - pyrsistent==0.20.0
+       - pytest==4.6.11
+-      - python-graphviz==0.20.3
++      - graphviz==0.20.3
+       - python-json-logger==2.0.7
+       - python-libsbml==5.20.2
+       - rfc3339-validator==0.1.4
+diff --git a/training/ecoli_training.py b/training/ecoli_training.py
+index 4ca2976..e87e38b 100644
+--- a/training/ecoli_training.py
++++ b/training/ecoli_training.py
+@@ -34,7 +34,7 @@ def parse_arguments() -> argparse.Namespace:
+         description='Trains RandomForest models for E. coli essentiality prediction'
+     )
+     parser.add_argument('--repeats', type=int, help='Number of training repeats')
+-    parser.add_argument('--test_split', type=float, help='Test set fraction (e.g. 0.2 for 20% test)')
++    parser.add_argument('--test_split', type=float, help='Test set fraction (e.g. 0.2 for 20%% test)')
+     parser.add_argument('--savepath', help='Path to save model and results')
+     parser.add_argument('--model', help='E. coli model name')
+     return parser.parse_args()
