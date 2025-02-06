@@ -298,4 +298,3 @@ dependencies:
       - websocket-client==1.8.0
       - widgetsnbextension==3.6.7
       - xgboost==2.1.1
-prefix: /home/cjmerzbacher/anaconda3/envs/viz
